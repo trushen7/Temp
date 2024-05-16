@@ -375,3 +375,96 @@ End Class
 
 ====using 
 
+Imports System.Globalization
+Imports System.Resources
+Imports System.Threading
+
+Public Class ResourceHelper
+    Private Shared ResourceManager As ResourceManager
+
+    Public Shared Sub ApplyResources(form As Form, resourceBaseName As String)
+        InitializeResourceManager(resourceBaseName)
+        ApplyResourcesToControls(form)
+    End Sub
+
+    Private Shared Sub InitializeResourceManager(resourceBaseName As String)
+        ' Include the Resources folder in the base name
+        ResourceManager = New ResourceManager("Resources." & resourceBaseName, GetType(ResourceHelper).Assembly)
+    End Sub
+
+    Private Shared Sub ApplyResourcesToControls(parent As Control)
+        For Each ctrl As Control In parent.Controls
+            ApplyResourceToControl(ctrl, parent.Name)
+            ' Recursively apply resources to child controls
+            If ctrl.HasChildren Then
+                ApplyResourcesToControls(ctrl)
+            End If
+        Next
+    End Sub
+
+    Private Shared Sub ApplyResourceToControl(control As Control, parentFormName As String)
+        Dim controlProperties = control.GetType().GetProperties()
+        For Each prop In controlProperties
+            If prop.CanWrite Then
+                Dim resourceKey As String = $"{parentFormName}.{control.Name}.{prop.Name}"
+                Try
+                    Dim resourceValue As String = ResourceManager.GetString(resourceKey, Thread.CurrentThread.CurrentUICulture)
+                    If resourceValue IsNot Nothing Then
+                        prop.SetValue(control, Convert.ChangeType(resourceValue, prop.PropertyType), Nothing)
+                    End If
+                Catch ex As Exception
+                    ' Log or handle the error
+                    Debug.WriteLine($"Error setting property {prop.Name} on control {control.Name}: {ex.Message}")
+                End Try
+            End If
+        Next
+    End Sub
+
+    Public Shared Function GetLocalizedResourceByKey(resourceKey As String, ParamArray values As Object()) As String
+        Try
+            ' Retrieve the localized resource string from the resource file
+            Dim localizedResourceString As String = ResourceManager.GetString(resourceKey, Thread.CurrentThread.CurrentUICulture)
+            If localizedResourceString IsNot Nothing Then
+                ' Replace placeholders in the resource string with the provided values
+                Return String.Format(localizedResourceString, values)
+            Else
+                ' Handle missing resource string
+                Return $"[Missing Resource: {resourceKey}]"
+            End If
+        Catch ex As Exception
+            ' Log or handle the error
+            Debug.WriteLine($"Error retrieving resource {resourceKey}: {ex.Message}")
+            Return $"[Error: {resourceKey}]"
+        End Try
+    End Function
+
+    Public Shared Sub SetCulture(cultureName As String)
+        Thread.CurrentThread.CurrentUICulture = New CultureInfo(cultureName)
+    End Sub
+End Class
+==============
+
+Imports System.Globalization
+Imports System.Resources
+
+Public Class ResourceHelper
+    Private Shared ResourceManager As ResourceManager
+
+    Public Shared Sub InitializeResourceManager(resourceBaseName As String)
+        ResourceManager = New ResourceManager(resourceBaseName, GetType(ResourceHelper).Assembly)
+    End Sub
+
+    Public Shared Function GetAllStrings(culture As CultureInfo) As Dictionary(Of String, String)
+        Dim allStrings As New Dictionary(Of String, String)()
+
+        Dim resourceSet As ResourceSet = ResourceManager.GetResourceSet(culture, createIfNotExists:=True, tryParents:=True)
+        If resourceSet IsNot Nothing Then
+            For Each resourceKey As Object In resourceSet.Keys
+                Dim resourceValue As Object = resourceSet.GetObject(resourceKey)
+                allStrings.Add(resourceKey.ToString(), If(resourceValue IsNot Nothing, resourceValue.ToString(), ""))
+            Next
+        End If
+
+        Return allStrings
+    End Function
+End Class
