@@ -248,3 +248,130 @@ Public Class ResourceHelper
         Thread.CurrentThread.CurrentUICulture = New CultureInfo(cultureName)
     End Sub
 End Class
+
+
+====just to modify
+
+    Public Shared Sub ApplyResources(form As Form, resourceBaseName As String)
+        Dim culture As String = Thread.CurrentThread.CurrentUICulture.Name
+        Dim resourceFileName As String = Path.Combine(Application.StartupPath, $"Resources\{resourceBaseName}.{culture}.resx")
+
+        ' Fall back to default resource file if specific culture file doesn't exist
+        If Not File.Exists(resourceFileName) Then
+            resourceFileName = Path.Combine(Application.StartupPath, $"Resources\{resourceBaseName}.resx")
+        End If
+
+        ' Load resources from the specified .resx file
+        Using resourceManager As New ResXResourceReader(resourceFileName)
+            For Each entry As DictionaryEntry In resourceManager
+                Dim resourceKey As String = entry.Key.ToString()
+                Dim resourceValue As String = entry.Value.ToString()
+                ApplyResourceToControl(form, resourceKey, resourceValue)
+            Next
+        End Using
+    End Sub
+
+    Private Shared Sub ApplyResourceToControl(form As Form, resourceKey As String, resourceValue As String)
+        Dim controlProperty = resourceKey.Split("."c)
+        If controlProperty.Length = 2 Then
+            Dim controlName = controlProperty(0)
+            Dim propertyName = controlProperty(1)
+
+            Dim control = FindControlRecursive(form, controlName)
+            If control IsNot Nothing Then
+                Dim prop = control.GetType().GetProperty(propertyName)
+                If prop IsNot Nothing AndAlso prop.CanWrite Then
+                    prop.SetValue(control, Convert.ChangeType(resourceValue, prop.PropertyType), Nothing)
+                End If
+            End If
+        End If
+    End Sub
+
+    Private Shared Function FindControlRecursive(parent As Control, controlName As String) As Control
+        If parent.Name = controlName Then
+            Return parent
+        End If
+
+        For Each ctrl As Control In parent.Controls
+            Dim foundCtrl = FindControlRecursive(ctrl, controlName)
+            If foundCtrl IsNot Nothing Then
+                Return foundCtrl
+            End If
+        Next
+
+        Return Nothing
+    End Function
+
+    ===using resource manager 
+
+    Imports System.Globalization
+Imports System.Resources
+Imports System.Threading
+Imports System.IO
+
+Public Class ResourceHelper
+    Private Shared ResourceManager As ResourceManager
+
+    Public Shared Sub ApplyResources(form As Form, resourceBaseName As String)
+        InitializeResourceManager(resourceBaseName)
+        ApplyResourcesToControls(form)
+    End Sub
+
+    Private Shared Sub InitializeResourceManager(resourceBaseName As String)
+        ResourceManager = New ResourceManager(resourceBaseName, GetType(ResourceHelper).Assembly)
+    End Sub
+
+    Private Shared Sub ApplyResourcesToControls(parent As Control)
+        For Each ctrl As Control In parent.Controls
+            ApplyResourceToControl(ctrl)
+            ' Recursively apply resources to child controls
+            If ctrl.HasChildren Then
+                ApplyResourcesToControls(ctrl)
+            End If
+        Next
+    End Sub
+
+    Private Shared Sub ApplyResourceToControl(control As Control)
+        Dim controlProperties = control.GetType().GetProperties()
+        For Each prop In controlProperties
+            If prop.CanWrite Then
+                Dim resourceKey As String = $"{control.Name}.{prop.Name}"
+                Try
+                    Dim resourceValue As String = ResourceManager.GetString(resourceKey, Thread.CurrentThread.CurrentUICulture)
+                    If resourceValue IsNot Nothing Then
+                        prop.SetValue(control, Convert.ChangeType(resourceValue, prop.PropertyType), Nothing)
+                    End If
+                Catch ex As Exception
+                    ' Log or handle the error
+                    Debug.WriteLine($"Error setting property {prop.Name} on control {control.Name}: {ex.Message}")
+                End Try
+            End If
+        Next
+    End Sub
+
+    Public Shared Function GetLocalizedResourceByKey(resourceKey As String, ParamArray values As Object()) As String
+        Try
+            ' Retrieve the localized resource string from the resource file
+            Dim localizedResourceString As String = ResourceManager.GetString(resourceKey, Thread.CurrentThread.CurrentUICulture)
+            If localizedResourceString IsNot Nothing Then
+                ' Replace placeholders in the resource string with the provided values
+                Return String.Format(localizedResourceString, values)
+            Else
+                ' Handle missing resource string
+                Return $"[Missing Resource: {resourceKey}]"
+            End If
+        Catch ex As Exception
+            ' Log or handle the error
+            Debug.WriteLine($"Error retrieving resource {resourceKey}: {ex.Message}")
+            Return $"[Error: {resourceKey}]"
+        End Try
+    End Function
+
+    Public Shared Sub SetCulture(cultureName As String)
+        Thread.CurrentThread.CurrentUICulture = New CultureInfo(cultureName)
+    End Sub
+End Class
+
+
+====using 
+
