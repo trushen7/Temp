@@ -983,5 +983,343 @@ Public Class ResourceHelper
         Thread.CurrentThread.CurrentUICulture = New CultureInfo(cultureName)
     End Sub
 End Class
+==============
+with form heading
+
+Imports System.Globalization
+Imports System.Resources
+Imports System.Threading
+Imports System.Diagnostics
+Imports System.Collections.Concurrent
+Imports System.Windows.Forms
+
+Public Class ResourceHelper
+    Private Shared ResourceManager As ResourceManager
+    Private Shared PropertyCache As New ConcurrentDictionary(Of Type, PropertyInfo())
+
+    Public Shared Sub ApplyResources(form As Form, resourceBaseName As String)
+        InitializeResourceManager(resourceBaseName)
+        ApplyResourcesToComponent(form, form.Name)
+    End Sub
+
+    Private Shared Sub InitializeResourceManager(resourceBaseName As String)
+        ResourceManager = New ResourceManager(resourceBaseName, GetType(ResourceHelper).Assembly)
+    End Sub
+
+    Private Shared Sub ApplyResourcesToComponent(component As Component, parentName As String)
+        If TypeOf component Is Form OrElse TypeOf component Is Control Then
+            ApplyResourceToProperties(component, parentName)
+            If TypeOf component Is Control Then
+                For Each child As Control In CType(component, Control).Controls
+                    ApplyResourcesToComponent(child, parentName)
+                Next
+            End If
+        End If
+
+        Select Case True
+            Case TypeOf component Is MenuStrip
+                ApplyResourcesToMenuStrip(CType(component, MenuStrip), parentName)
+            Case TypeOf component Is ToolStrip
+                ApplyResourcesToToolStrip(CType(component, ToolStrip), parentName)
+            Case TypeOf component Is ContextMenuStrip
+                ApplyResourcesToContextMenuStrip(CType(component, ContextMenuStrip), parentName)
+            Case TypeOf component Is StatusStrip
+                ApplyResourcesToStatusStrip(CType(component, StatusStrip), parentName)
+            Case TypeOf component Is SplitContainer
+                ApplyResourcesToSplitContainer(CType(component, SplitContainer), parentName)
+            Case TypeOf component Is TreeView
+                ApplyResourcesToTreeView(CType(component, TreeView), parentName)
+            Case TypeOf component Is ListView
+                ApplyResourcesToListView(CType(component, ListView), parentName)
+            Case TypeOf component Is ComboBox
+                ApplyResourcesToComboBox(CType(component, ComboBox), parentName)
+        End Select
+    End Sub
+
+    Private Shared Sub ApplyResourceToProperties(component As Component, parentName As String)
+        Dim componentType = component.GetType()
+        Dim componentProperties = PropertyCache.GetOrAdd(componentType, Function(t) t.GetProperties())
+
+        For Each prop In componentProperties
+            If prop.CanWrite Then
+                Dim resourceKey As String = $"{parentName}.{component.Name}.{prop.Name}"
+                Try
+                    Dim resourceValue As String = ResourceManager.GetString(resourceKey, Thread.CurrentThread.CurrentUICulture)
+                    If resourceValue IsNot Nothing Then
+                        prop.SetValue(component, Convert.ChangeType(resourceValue, prop.PropertyType), Nothing)
+                    End If
+                Catch ex As Exception
+                    Debug.WriteLine($"Error setting property {prop.Name} on component {component.Name}: {ex.Message}")
+                End Try
+            End If
+        Next
+
+        ' Special handling for form's Text property (form heading)
+        If TypeOf component Is Form Then
+            Dim form As Form = CType(component, Form)
+            Dim formResourceKey As String = $"{parentName}.{form.Name}.Text"
+            Try
+                Dim formResourceValue As String = ResourceManager.GetString(formResourceKey, Thread.CurrentThread.CurrentUICulture)
+                If formResourceValue IsNot Nothing Then
+                    form.Text = formResourceValue
+                End If
+            Catch ex As Exception
+                Debug.WriteLine($"Error setting form text for form {form.Name}: {ex.Message}")
+            End Try
+        End If
+    End Sub
+
+    Private Shared Sub ApplyResourcesToMenuStrip(menuStrip As MenuStrip, parentName As String)
+        For Each menuItem As ToolStripMenuItem In menuStrip.Items
+            ApplyResourceToMenuItem(menuItem, parentName)
+        Next
+    End Sub
+
+    Private Shared Sub ApplyResourcesToToolStrip(toolStrip As ToolStrip, parentName As String)
+        For Each item As ToolStripItem In toolStrip.Items
+            If TypeOf item Is ToolStripDropDownItem Then
+                ApplyResourceToMenuItem(CType(item, ToolStripDropDownItem), parentName)
+            End If
+        Next
+    End Sub
+
+    Private Shared Sub ApplyResourcesToContextMenuStrip(contextMenuStrip As ContextMenuStrip, parentName As String)
+        For Each item As ToolStripItem In contextMenuStrip.Items
+            If TypeOf item Is ToolStripMenuItem Then
+                ApplyResourceToMenuItem(CType(item, ToolStripMenuItem), parentName)
+            End If
+        Next
+    End Sub
+
+    Private Shared Sub ApplyResourcesToStatusStrip(statusStrip As StatusStrip, parentName As String)
+        For Each item As ToolStripItem In statusStrip.Items
+            If TypeOf item Is ToolStripStatusLabel Then
+                ApplyResourceToProperties(item, parentName)
+            End If
+        Next
+    End Sub
+
+    Private Shared Sub ApplyResourcesToSplitContainer(splitContainer As SplitContainer, parentName As String)
+        ApplyResourcesToComponent(splitContainer.Panel1, parentName)
+        ApplyResourcesToComponent(splitContainer.Panel2, parentName)
+    End Sub
+
+    Private Shared Sub ApplyResourcesToTreeView(treeView As TreeView, parentName As String)
+        For Each node As TreeNode In treeView.Nodes
+            ApplyResourceToTreeNode(node, parentName)
+        Next
+    End Sub
+
+    Private Shared Sub ApplyResourceToTreeNode(node As TreeNode, parentName As String)
+        Dim resourceKey As String = $"{parentName}.{node.Name}.Text"
+        Try
+            Dim resourceValue As String = ResourceManager.GetString(resourceKey, Thread.CurrentThread.CurrentUICulture)
+            If resourceValue IsNot Nothing Then
+                node.Text = resourceValue
+            End If
+        Catch ex As Exception
+            Debug.WriteLine($"Error setting text for tree node {node.Name}: {ex.Message}")
+        End Try
+
+        For Each childNode As TreeNode In node.Nodes
+            ApplyResourceToTreeNode(childNode, parentName)
+        Next
+    End Sub
+
+    Private Shared Sub ApplyResourcesToListView(listView As ListView, parentName As String)
+        For Each item As ListViewItem In listView.Items
+            ApplyResourceToProperties(item, parentName)
+        Next
+    End Sub
+
+    Private Shared Sub ApplyResourcesToComboBox(comboBox As ComboBox, parentName As String)
+        For i As Integer = 0 To comboBox.Items.Count - 1
+            Dim item = combo
+======without form heading
+
+Imports System.Globalization
+Imports System.Resources
+Imports System.Threading
+Imports System.Diagnostics
+Imports System.Collections.Concurrent
+
+Public Class ResourceHelper
+    Private Shared ResourceManager As ResourceManager
+    Private Shared PropertyCache As New ConcurrentDictionary(Of Type, PropertyInfo())
+
+    Public Shared Sub ApplyResources(form As Form, resourceBaseName As String)
+        InitializeResourceManager(resourceBaseName)
+        ApplyResourcesToComponent(form, form.Name)
+    End Sub
+
+    Private Shared Sub InitializeResourceManager(resourceBaseName As String)
+        ResourceManager = New ResourceManager(resourceBaseName, GetType(ResourceHelper).Assembly)
+    End Sub
+
+    Private Shared Sub ApplyResourcesToComponent(component As Component, parentName As String)
+        If TypeOf component Is Form OrElse TypeOf component Is Control Then
+            ApplyResourceToProperties(component, parentName)
+            If TypeOf component Is Control Then
+                For Each child As Control In CType(component, Control).Controls
+                    ApplyResourcesToComponent(child, parentName)
+                Next
+            End If
+        End If
+
+        Select Case True
+            Case TypeOf component Is MenuStrip
+                ApplyResourcesToMenuStrip(CType(component, MenuStrip), parentName)
+            Case TypeOf component Is ToolStrip
+                ApplyResourcesToToolStrip(CType(component, ToolStrip), parentName)
+            Case TypeOf component Is ContextMenuStrip
+                ApplyResourcesToContextMenuStrip(CType(component, ContextMenuStrip), parentName)
+            Case TypeOf component Is StatusStrip
+                ApplyResourcesToStatusStrip(CType(component, StatusStrip), parentName)
+            Case TypeOf component Is SplitContainer
+                ApplyResourcesToSplitContainer(CType(component, SplitContainer), parentName)
+            Case TypeOf component Is TreeView
+                ApplyResourcesToTreeView(CType(component, TreeView), parentName)
+            Case TypeOf component Is ListView
+                ApplyResourcesToListView(CType(component, ListView), parentName)
+            Case TypeOf component Is ComboBox
+                ApplyResourcesToComboBox(CType(component, ComboBox), parentName)
+        End Select
+    End Sub
+
+    Private Shared Sub ApplyResourceToProperties(component As Component, parentName As String)
+        Dim componentType = component.GetType()
+        Dim componentProperties = PropertyCache.GetOrAdd(componentType, Function(t) t.GetProperties())
+
+        For Each prop In componentProperties
+            If prop.CanWrite Then
+                Dim resourceKey As String = $"{parentName}.{component.Name}.{prop.Name}"
+                Try
+                    Dim resourceValue As String = ResourceManager.GetString(resourceKey, Thread.CurrentThread.CurrentUICulture)
+                    If resourceValue IsNot Nothing Then
+                        prop.SetValue(component, Convert.ChangeType(resourceValue, prop.PropertyType), Nothing)
+                    End If
+                Catch ex As Exception
+                    Debug.WriteLine($"Error setting property {prop.Name} on component {component.Name}: {ex.Message}")
+                End Try
+            End If
+        Next
+    End Sub
+
+    Private Shared Sub ApplyResourcesToMenuStrip(menuStrip As MenuStrip, parentName As String)
+        For Each menuItem As ToolStripMenuItem In menuStrip.Items
+            ApplyResourceToMenuItem(menuItem, parentName)
+        Next
+    End Sub
+
+    Private Shared Sub ApplyResourcesToToolStrip(toolStrip As ToolStrip, parentName As String)
+        For Each item As ToolStripItem In toolStrip.Items
+            If TypeOf item Is ToolStripDropDownItem Then
+                ApplyResourceToMenuItem(CType(item, ToolStripDropDownItem), parentName)
+            End If
+        Next
+    End Sub
+
+    Private Shared Sub ApplyResourcesToContextMenuStrip(contextMenuStrip As ContextMenuStrip, parentName As String)
+        For Each item As ToolStripItem In contextMenuStrip.Items
+            If TypeOf item Is ToolStripMenuItem Then
+                ApplyResourceToMenuItem(CType(item, ToolStripMenuItem), parentName)
+            End If
+        Next
+    End Sub
+
+    Private Shared Sub ApplyResourcesToStatusStrip(statusStrip As StatusStrip, parentName As String)
+        For Each item As ToolStripItem In statusStrip.Items
+            If TypeOf item Is ToolStripStatusLabel Then
+                ApplyResourceToProperties(item, parentName)
+            End If
+        Next
+    End Sub
+
+    Private Shared Sub ApplyResourcesToSplitContainer(splitContainer As SplitContainer, parentName As String)
+        ApplyResourcesToComponent(splitContainer.Panel1, parentName)
+        ApplyResourcesToComponent(splitContainer.Panel2, parentName)
+    End Sub
+
+    Private Shared Sub ApplyResourcesToTreeView(treeView As TreeView, parentName As String)
+        For Each node As TreeNode In treeView.Nodes
+            ApplyResourceToTreeNode(node, parentName)
+        Next
+    End Sub
+
+    Private Shared Sub ApplyResourceToTreeNode(node As TreeNode, parentName As String)
+        Dim resourceKey As String = $"{parentName}.{node.Name}.Text"
+        Try
+            Dim resourceValue As String = ResourceManager.GetString(resourceKey, Thread.CurrentThread.CurrentUICulture)
+            If resourceValue IsNot Nothing Then
+                node.Text = resourceValue
+            End If
+        Catch ex As Exception
+            Debug.WriteLine($"Error setting text for tree node {node.Name}: {ex.Message}")
+        End Try
+
+        For Each childNode As TreeNode In node.Nodes
+            ApplyResourceToTreeNode(childNode, parentName)
+        Next
+    End Sub
+
+    Private Shared Sub ApplyResourcesToListView(listView As ListView, parentName As String)
+        For Each item As ListViewItem In listView.Items
+            ApplyResourceToProperties(item, parentName)
+        Next
+    End Sub
+
+    Private Shared Sub ApplyResourcesToComboBox(comboBox As ComboBox, parentName As String)
+        For i As Integer = 0 To comboBox.Items.Count - 1
+            Dim item = comboBox.Items(i)
+            If TypeOf item Is String Then
+                Dim resourceKey As String = $"{parentName}.{comboBox.Name}.Items[{i}]"
+                Try
+                    Dim resourceValue As String = ResourceManager.GetString(resourceKey, Thread.CurrentThread.CurrentUICulture)
+                    If resourceValue IsNot Nothing Then
+                        comboBox.Items(i) = resourceValue
+                    End If
+                Catch ex As Exception
+                    Debug.WriteLine($"Error setting text for combobox item at index {i}: {ex.Message}")
+                End Try
+            End If
+        Next
+    End Sub
+
+    Private Shared Sub ApplyResourceToMenuItem(menuItem As ToolStripMenuItem, parentName As String)
+        Dim resourceKey As String = $"{parentName}.{menuItem.Name}.Text"
+        Try
+            Dim resourceValue As String = ResourceManager.GetString(resourceKey, Thread.CurrentThread.CurrentUICulture)
+            If resourceValue IsNot Nothing Then
+                menuItem.Text = resourceValue
+            End If
+        Catch ex As Exception
+            Debug.WriteLine($"Error setting text for menu item {menuItem.Name}: {ex.Message}")
+        End Try
+
+        For Each dropDownItem As ToolStripItem In menuItem.DropDownItems
+            If TypeOf dropDownItem Is ToolStripMenuItem Then
+                ApplyResourceToMenuItem(CType(dropDownItem, ToolStripMenuItem), parentName)
+            End If
+        Next
+    End Sub
+
+    Public Shared Function GetLocalizedResourceByKey(resourceKey As String, ParamArray values As Object()) As String
+        Try
+            Dim localizedResourceString As String = ResourceManager.GetString(resourceKey, Thread.CurrentThread.CurrentUICulture)
+            If localizedResourceString IsNot Nothing Then
+                Return String.Format(localizedResourceString, values)
+            Else
+                Return $"[Missing Resource: {resourceKey}]"
+            End If
+        Catch ex As Exception
+            Debug.WriteLine($"Error retrieving resource {resourceKey}: {ex.Message}")
+            Return $"[Error: {resourceKey}]"
+        End Try
+    End Function
+
+    Public Shared Sub SetCulture(cultureName As String)
+        Thread.CurrentThread.CurrentUICulture = New CultureInfo(cultureName)
+    End Sub
+End Class
 
 
