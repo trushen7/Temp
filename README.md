@@ -1446,3 +1446,110 @@ Public Class ResourceHelper
     End Sub
 End Class
 
+======================================
+Imports System.Collections.Generic
+Imports System.Globalization
+Imports System.Resources
+Imports System.Windows.Forms
+
+Public Class ResourceHelper
+    Private Shared _resourceManager As ResourceManager
+    Private Shared _resourceDictionary As Dictionary(Of String, Dictionary(Of String, Dictionary(Of String, String)))
+
+    Public Shared Sub ApplyResources(form As Form, resourceBaseName As String)
+        Try
+            InitializeResourceManager(resourceBaseName)
+            ApplyResourcesToControl(form)
+        Catch ex As Exception
+            ' Handle the exception, e.g., logging or displaying an error message
+            MessageBox.Show($"Error applying resources: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
+        End Try
+    End Sub
+
+    Private Shared Sub InitializeResourceManager(resourceBaseName As String)
+        ' Initialize resource manager with resource base name
+        _resourceManager = New ResourceManager(resourceBaseName, GetType(ResourceHelper).Assembly)
+
+        ' Load all resources into a dictionary for faster access
+        _resourceDictionary = New Dictionary(Of String, Dictionary(Of String, Dictionary(Of String, String)))()
+        Dim cultures As CultureInfo() = CultureInfo.GetCultures(CultureTypes.AllCultures)
+        For Each culture As CultureInfo In cultures
+            Dim resourceSet As New Dictionary(Of String, Dictionary(Of String, String))()
+            Dim resourceSetExists As Boolean = False
+            For Each resourceKey As String In _resourceManager.GetResourceSet(culture, True, True).OfType(Of String)()
+                resourceSet(resourceKey) = LoadResourceSetForControl(resourceKey, culture)
+                resourceSetExists = True
+            Next
+            If resourceSetExists Then
+                _resourceDictionary(culture.Name) = resourceSet
+            End If
+        Next
+    End Sub
+
+    Private Shared Function LoadResourceSetForControl(resourceKey As String, culture As CultureInfo) As Dictionary(Of String, String)
+        Dim resourceSet As New Dictionary(Of String, String)()
+        Dim parts As String() = resourceKey.Split("."c)
+
+        ' Ensure that the resource key follows the pattern {parentFormName}.{control.Name}.{prop.Name}
+        If parts.Length = 3 Then
+            Dim parentFormName As String = parts(0)
+            Dim controlName As String = parts(1)
+            Dim propertyName As String = parts(2)
+            Dim resourceValue As String = _resourceManager.GetString(resourceKey, culture)
+
+            If Not String.IsNullOrEmpty(resourceValue) Then
+                resourceSet(propertyName) = resourceValue
+            End If
+        End If
+
+        Return resourceSet
+    End Function
+
+    Private Shared Sub ApplyResourcesToControl(control As Control)
+        Dim cultureName As String = CultureInfo.CurrentUICulture.Name
+
+        ' Check if resource exists for the current culture
+        If _resourceDictionary.ContainsKey(cultureName) Then
+            Dim resourceSet As Dictionary(Of String, String) = GetResourceSetForControl(control.Name, cultureName)
+
+            ' Apply resources to the control
+            ApplyResourceProperties(control, resourceSet)
+        End If
+
+        ' Recursively apply resources to child controls
+        For Each childControl As Control In control.Controls
+            ApplyResourcesToControl(childControl)
+        Next
+    End Sub
+
+    Private Shared Function GetResourceSetForControl(controlName As String, cultureName As String) As Dictionary(Of String, String)
+        Dim resourceSet As New Dictionary(Of String, String)()
+
+        If _resourceDictionary(cultureName).ContainsKey(controlName) Then
+            resourceSet = _resourceDictionary(cultureName)(controlName)
+        End If
+
+        Return resourceSet
+    End Function
+
+    Private Shared Sub ApplyResourceProperties(control As Control, resourceSet As Dictionary(Of String, String))
+        For Each kvp As KeyValuePair(Of String, String) In resourceSet
+            Dim propertyName As String = kvp.Key
+            Dim propertyValue As String = kvp.Value
+            SetProperty(control, propertyName, propertyValue)
+        Next
+    End Sub
+
+    Private Shared Sub SetProperty(control As Control, propertyName As String, propertyValue As String)
+        Select Case propertyName
+            Case "Text"
+                control.Text = propertyValue
+            Case "Visible"
+                control.Visible = Boolean.Parse(propertyValue)
+            ' Add more property handlers as needed
+            ' For example:
+            ' Case "Enabled"
+            '     control.Enabled = Boolean.Parse(propertyValue)
+        End Select
+    End Sub
+End Class
