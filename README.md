@@ -1687,3 +1687,154 @@ Public Shared Sub SetCulture(cultureName As String)
     Thread.CurrentThread.CurrentUICulture = New CultureInfo(cultureName)
 End Sub
 
+
+
+
+
+
+
+
+============================combobox and menustrip
+
+Imports System.Globalization
+Imports System.Resources
+Imports System.Threading
+Imports System.Windows.Forms
+
+Public Class ResourceHelper
+    Private Shared ResourceManager As ResourceManager
+
+    Public Shared Sub ApplyResources(form As Form, resourceBaseName As String)
+        InitializeResourceManager(resourceBaseName)
+        ApplyResourcesToFormAndControls(form)
+    End Sub
+
+    Private Shared Sub InitializeResourceManager(resourceBaseName As String)
+        ResourceManager = New ResourceManager(resourceBaseName, GetType(ResourceHelper).Assembly)
+    End Sub
+
+    Private Shared Sub ApplyResourcesToFormAndControls(form As Form)
+        ApplyResourceToForm(form)
+        ApplyResourcesToControls(form, form.Name)
+    End Sub
+
+    Private Shared Sub ApplyResourceToForm(form As Form)
+        Dim formProperties = form.GetType().GetProperties()
+        For Each prop In formProperties
+            If prop.CanWrite Then
+                Dim resourceKey As String = $"{form.Name}.{prop.Name}"
+                Try
+                    Dim resourceValue As String = ResourceManager.GetString(resourceKey, Thread.CurrentThread.CurrentUICulture)
+                    If resourceValue IsNot Nothing Then
+                        prop.SetValue(form, Convert.ChangeType(resourceValue, prop.PropertyType), Nothing)
+                    End If
+                Catch ex As Exception
+                    Debug.WriteLine($"Error setting property {prop.Name} on form {form.Name}: {ex.Message}")
+                End Try
+            End If
+        Next
+    End Sub
+
+    Private Shared Sub ApplyResourcesToControls(parent As Control, parentFormName As String)
+        For Each ctrl As Control In parent.Controls
+            ApplyResourceToControl(ctrl, parentFormName)
+            If ctrl.HasChildren Then
+                ApplyResourcesToControls(ctrl, parentFormName)
+            End If
+        Next
+
+        If TypeOf parent Is Form Then
+            Dim form As Form = CType(parent, Form)
+            For Each ctrl As Control In form.Controls
+                If TypeOf ctrl Is MenuStrip Then
+                    ApplyResourcesToMenuStrip(CType(ctrl, MenuStrip), parentFormName)
+                End If
+            Next
+        End If
+    End Sub
+
+    Private Shared Sub ApplyResourcesToMenuStrip(menuStrip As MenuStrip, parentFormName As String)
+        For Each menuItem As ToolStripMenuItem In menuStrip.Items
+            ApplyResourceToMenuItem(menuItem, parentFormName)
+        Next
+    End Sub
+
+    Private Shared Sub ApplyResourceToMenuItem(menuItem As ToolStripMenuItem, parentFormName As String)
+        Dim resourceKey As String = $"{parentFormName}.{menuItem.Name}.Text"
+        Try
+            Dim resourceValue As String = ResourceManager.GetString(resourceKey, Thread.CurrentThread.CurrentUICulture)
+            If resourceValue IsNot Nothing Then
+                menuItem.Text = resourceValue
+            End If
+        Catch ex As Exception
+            Debug.WriteLine($"Error setting text for menu item {menuItem.Name}: {ex.Message}")
+        End Try
+
+        For Each dropDownItem As ToolStripItem In menuItem.DropDownItems
+            If TypeOf dropDownItem Is ToolStripMenuItem Then
+                ApplyResourceToMenuItem(CType(dropDownItem, ToolStripMenuItem), parentFormName)
+            End If
+        Next
+    End Sub
+
+    Private Shared Sub ApplyResourceToControl(control As Control, parentFormName As String)
+        Dim controlProperties = control.GetType().GetProperties()
+        For Each prop In controlProperties
+            If prop.CanWrite Then
+                Dim resourceKey As String = $"{parentFormName}.{control.Name}.{prop.Name}"
+                Try
+                    Dim resourceValue As String = ResourceManager.GetString(resourceKey, Thread.CurrentThread.CurrentUICulture)
+                    If resourceValue IsNot Nothing Then
+                        prop.SetValue(control, Convert.ChangeType(resourceValue, prop.PropertyType), Nothing)
+                    End If
+                Catch ex As Exception
+                    Debug.WriteLine($"Error setting property {prop.Name} on control {control.Name}: {ex.Message}")
+                End Try
+            End If
+        Next
+
+        ' Handle ComboBox items
+        If TypeOf control Is ComboBox Then
+            ApplyResourcesToComboBoxItems(CType(control, ComboBox), parentFormName)
+        End If
+    End Sub
+
+    Private Shared Sub ApplyResourcesToComboBoxItems(comboBox As ComboBox, parentFormName As String)
+        Dim items = comboBox.Items.Cast(Of Object).ToArray()
+        comboBox.Items.Clear()
+        For i As Integer = 0 To items.Length - 1
+            Dim resourceKey As String = $"{parentFormName}.{comboBox.Name}.Items[{i}]"
+            Try
+                Dim resourceValue As String = ResourceManager.GetString(resourceKey, Thread.CurrentThread.CurrentUICulture)
+                If resourceValue IsNot Nothing Then
+                    comboBox.Items.Add(resourceValue)
+                Else
+                    comboBox.Items.Add(items(i)) ' Add original item if no resource is found
+                End If
+            Catch ex As Exception
+                Debug.WriteLine($"Error setting item {i} for ComboBox {comboBox.Name}: {ex.Message}")
+                comboBox.Items.Add(items(i)) ' Add original item if an error occurs
+            End Try
+        Next
+    End Sub
+
+    Public Shared Function GetLocalizedResourceByKey(resourceKey As String, ParamArray values As Object()) As String
+        Try
+            Dim localizedResourceString As String = ResourceManager.GetString(resourceKey, Thread.CurrentThread.CurrentUICulture)
+            If localizedResourceString IsNot Nothing Then
+                Return String.Format(localizedResourceString, values)
+            Else
+                Return $"[Missing Resource: {resourceKey}]"
+            End If
+        Catch ex As Exception
+            Debug.WriteLine($"Error retrieving resource {resourceKey}: {ex.Message}")
+            Return $"[Error: {resourceKey}]"
+        End Try
+    End Function
+
+    Public Shared Sub SetCulture(cultureName As String)
+        Thread.CurrentThread.CurrentUICulture = New CultureInfo(cultureName)
+    End Sub
+End Class
+
+
