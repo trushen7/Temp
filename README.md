@@ -1321,5 +1321,128 @@ Public Class ResourceHelper
         Thread.CurrentThread.CurrentUICulture = New CultureInfo(cultureName)
     End Sub
 End Class
+=================================Additional changes
 
+Imports System.Collections.Generic
+Imports System.Windows.Forms
+
+Public Class ResourceHelper
+    Private Shared _resourceDictionary As Dictionary(Of String, Dictionary(Of String, String)) = New Dictionary(Of String, Dictionary(Of String, String))()
+
+    Public Shared Sub ApplyResources(form As Form, resourceBaseName As String)
+        Try
+            InitializeResourceManager(resourceBaseName)
+            ApplyResourcesToControl(form)
+        Catch ex As Exception
+            ' Handle the exception, e.g., logging or displaying an error message
+            MessageBox.Show($"Error applying resources: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
+        End Try
+    End Sub
+
+    Private Shared Sub InitializeResourceManager(resourceBaseName As String)
+        ' Initialize resource manager with resource files based on base name
+        ' For example, load "resourceBaseName.en-US.resx" for English (United States)
+        ' and "resourceBaseName.fr-FR.resx" for French (France)
+    End Sub
+
+    Private Shared Sub ApplyResourcesToControl(control As Control)
+        Try
+            Dim resourceName As String = control.Name
+
+            ' Check if resource exists for the control
+            If _resourceDictionary.ContainsKey(resourceName) Then
+                Dim resourceMappings = _resourceDictionary(resourceName)
+                For Each kvp As KeyValuePair(Of String, String) In resourceMappings
+                    Dim propertyName As String = kvp.Key
+                    Dim propertyValue As String = kvp.Value
+                    SetProperty(control, propertyName, propertyValue)
+                Next
+            End If
+
+            ' Recursively apply resources to child controls
+            If TypeOf control Is MenuStrip Then
+                ApplyResourcesToMenuStrip(DirectCast(control, MenuStrip))
+            ElseIf TypeOf control Is GroupBox Then
+                Dim groupBox As GroupBox = DirectCast(control, GroupBox)
+                For Each childControl As Control In groupBox.Controls
+                    ApplyResourcesToControl(childControl)
+                Next
+            Else
+                For Each childControl As Control In control.Controls
+                    ApplyResourcesToControl(childControl)
+                Next
+            End If
+        Catch ex As Exception
+            ' Handle the exception, e.g., logging or displaying an error message
+            MessageBox.Show($"Error applying resources to control {control.Name}: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
+        End Try
+    End Sub
+
+    Private Shared Sub SetProperty(control As Control, propertyName As String, propertyValue As String)
+        Try
+            If propertyName = "Text" Then
+                control.Text = propertyValue
+            ElseIf propertyName = "Visible" Then
+                control.Visible = Boolean.Parse(propertyValue)
+            ' Add more property handlers as needed
+            End If
+        Catch ex As Exception
+            ' Handle the exception, e.g., logging or displaying an error message
+            MessageBox.Show($"Error setting property {propertyName} for control {control.Name}: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
+        End Try
+    End Sub
+
+    Private Shared Sub ApplyResourcesToMenuStrip(menuStrip As MenuStrip)
+        Try
+            For Each menuItem As ToolStripMenuItem In menuStrip.Items
+                ApplyResourceToMenuStripItem(menuItem)
+            Next
+        Catch ex As Exception
+            ' Handle the exception, e.g., logging or displaying an error message
+            MessageBox.Show($"Error applying resources to MenuStrip: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
+        End Try
+    End Sub
+
+    Private Shared Sub ApplyResourceToMenuStripItem(menuItem As ToolStripMenuItem)
+        Try
+            Dim resourceName As String = menuItem.Name
+
+            ' Check if resource exists for the menu item
+            If _resourceDictionary.ContainsKey(resourceName) Then
+                Dim resourceMappings = _resourceDictionary(resourceName)
+                If resourceMappings.TryGetValue("Text", Dim propertyValue As String) Then
+                    menuItem.Text = propertyValue
+                End If
+            End If
+
+            ' Recursively apply resources to dropdown items
+            For Each dropDownItem As ToolStripItem In menuItem.DropDownItems
+                If TypeOf dropDownItem Is ToolStripMenuItem Then
+                    ApplyResourceToMenuStripItem(DirectCast(dropDownItem, ToolStripMenuItem))
+                End If
+            Next
+        Catch ex As Exception
+            ' Handle the exception, e.g., logging or displaying an error message
+            MessageBox.Show($"Error applying resources to MenuStrip item {menuItem.Name}: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
+        End Try
+    End Sub
+
+    Public Shared Sub AddResourceMapping(controlName As String, propertyName As String, propertyValue As String)
+        Try
+            If Not _resourceDictionary.ContainsKey(controlName) Then
+                _resourceDictionary.Add(controlName, New Dictionary(Of String, String)())
+            End If
+
+            Dim resourceMappings = _resourceDictionary(controlName)
+            If Not resourceMappings.ContainsKey(propertyName) Then
+                resourceMappings.Add(propertyName, propertyValue)
+            Else
+                resourceMappings(propertyName) = propertyValue
+            End If
+        Catch ex As Exception
+            ' Handle the exception, e.g., logging or displaying an error message
+            MessageBox.Show($"Error adding resource mapping for control {controlName}: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
+        End Try
+    End Sub
+End Class
 
