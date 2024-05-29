@@ -2890,5 +2890,161 @@ Public Class ResourceHelper
     End Sub
 End Class
 
+========================
+Imports System.Globalization
+Imports System.Threading
+Imports System.Windows.Forms
+
+Public Class ResourceHelper
+    Private Shared ResourceManager As ResourceManager
+    Private Shared ResourceCache As Dictionary(Of String, Dictionary(Of String, String))
+
+    ' Initialize resource manager and cache
+    Private Shared Sub InitializeResourceManager(resourceBaseName As String)
+        ResourceManager = New ResourceManager(resourceBaseName, GetType(ResourceHelper).Assembly)
+        ResourceCache = New Dictionary(Of String, Dictionary(Of String, String))
+    End Sub
+
+    ' Apply resources to a form and its controls
+    Public Shared Sub ApplyResources(form As Form, resourceBaseName As String)
+        ' Initialize the resource manager and cache
+        InitializeResourceManager(resourceBaseName)
+        ' Apply resources to form and its controls
+        ApplyResourcesRecursively(form, form.Name)
+    End Sub
+
+    ' Apply resources recursively to controls
+    Private Shared Sub ApplyResourcesRecursively(parentControl As Control, parentFormName As String)
+        ' Apply resources to parent control
+        ApplyResourcesToControl(parentControl, parentFormName)
+
+        ' Recursively apply resources to child controls
+        For Each childControl As Control In parentControl.Controls
+            ApplyResourcesRecursively(childControl, parentFormName)
+        Next
+    End Sub
+
+    ' Apply resources to a control
+    Private Shared Sub ApplyResourcesToControl(control As Control, parentFormName As String)
+        ' Apply resources to control properties
+        ApplyResourceToProperty(control, "Text", parentFormName)
+        ApplyResourceToProperty(control, "Location", parentFormName)
+        ApplyResourceToProperty(control, "ToolTipText", parentFormName)
+        ' Add more properties as needed
+
+        ' Handle specific control types
+        If TypeOf control Is MenuStrip Then
+            ApplyResourcesToMenuStrip(CType(control, MenuStrip), parentFormName)
+        ElseIf TypeOf control Is ComboBox Then
+            ApplyResourcesToComboBox(CType(control, ComboBox), parentFormName)
+        ElseIf TypeOf control Is GroupBox Then
+            ApplyResourcesToGroupBox(CType(control, GroupBox), parentFormName)
+        End If
+    End Sub
+
+    ' Apply resources to a MenuStrip control
+    Private Shared Sub ApplyResourcesToMenuStrip(menuStrip As MenuStrip, parentFormName As String)
+        For Each menuItem As ToolStripMenuItem In menuStrip.Items
+            ApplyResourceToMenuItem(menuItem, parentFormName)
+        Next
+    End Sub
+
+    ' Apply resources to a ToolStripMenuItem control
+    Private Shared Sub ApplyResourceToMenuItem(menuItem As ToolStripMenuItem, parentFormName As String)
+        Dim resourceKey As String = $"{parentFormName}.{menuItem.Name}.Text"
+        Dim resourceValue As String = GetCachedResourceValue(resourceKey)
+        If resourceValue IsNot Nothing Then
+            menuItem.Text = resourceValue
+        End If
+    End Sub
+
+    ' Apply resources to a ComboBox control
+    Private Shared Sub ApplyResourcesToComboBox(comboBox As ComboBox, parentFormName As String)
+        ' Localize the Text property of the ComboBox
+        Dim textResourceKey As String = $"{parentFormName}.{comboBox.Name}.Text"
+        Dim textResourceValue As String = GetCachedResourceValue(textResourceKey)
+        If textResourceValue IsNot Nothing Then
+            comboBox.Text = textResourceValue
+        End If
+
+        ' Localize the items of the ComboBox
+        Dim items = comboBox.Items.Cast(Of Object).ToArray()
+        comboBox.Items.Clear()
+        For i As Integer = 0 To items.Length - 1
+            Dim resourceKey As String = $"{parentFormName}.{comboBox.Name}.Items[{i}]"
+            Dim resourceValue As String = GetCachedResourceValue(resourceKey)
+            If resourceValue IsNot Nothing Then
+                comboBox.Items.Add(resourceValue)
+            Else
+                comboBox.Items.Add(items(i)) ' Add original item if no resource is found
+            End If
+        Next
+    End Sub
+
+    ' Apply resources to a GroupBox control
+    Private Shared Sub ApplyResourcesToGroupBox(groupBox As GroupBox, parentFormName As String)
+        ' Localize the Text property of the GroupBox
+        Dim textResourceKey As String = $"{parentFormName}.{groupBox.Name}.Text"
+        Dim textResourceValue As String = GetCachedResourceValue(textResourceKey)
+        If textResourceValue IsNot Nothing Then
+            groupBox.Text = textResourceValue
+        End If
+
+        ' Apply resources to controls within the GroupBox recursively
+        For Each ctrl As Control In groupBox.Controls
+            ApplyResourcesToControl(ctrl, $"{parentFormName}.{groupBox.Name}")
+        Next
+    End Sub
+
+    ' Apply resource to a control property
+    Private Shared Sub ApplyResourceToProperty(control As Control, propertyName As String, parentFormName As String)
+        ' Generate resource key
+        Dim resourceKey As String = $"{parentFormName}.{control.Name}.{propertyName}"
+        Dim resourceValue As String = GetCachedResourceValue(resourceKey)
+        If resourceValue IsNot Nothing Then
+            ' Set property value
+            Dim prop As Reflection.PropertyInfo = control.GetType().GetProperty(propertyName)
+            If prop IsNot Nothing AndAlso prop.CanWrite Then
+                prop.SetValue(control, Convert.ChangeType(resourceValue, prop.PropertyType), Nothing)
+            End If
+        End If
+    End Sub
+
+    ' Get resource value from cache or resource manager
+    Private Shared Function GetCachedResourceValue(resourceKey As String) As String
+        If ResourceCache.ContainsKey(resourceKey) Then
+            Return ResourceCache(resourceKey)
+        Else
+            Try
+                Dim resourceValue As String = ResourceManager.GetString(resourceKey, Thread.CurrentThread.CurrentUICulture)
+                ResourceCache.Add(resourceKey, resourceValue)
+                Return resourceValue
+            Catch ex As Exception
+                Debug.WriteLine($"Error retrieving resource {resourceKey}: {ex.Message}")
+                Return Nothing
+            End Try
+        End If
+    End Function
+
+    ' Get localized resource by key with optional format values
+    Public Shared Function GetLocalizedResourceByKey(resourceKey As String, ParamArray values As Object()) As String
+        Try
+            Dim localizedResourceString As String = ResourceManager.GetString(resourceKey, Thread.CurrentThread.CurrentUICulture)
+            If localizedResourceString IsNot Nothing Then
+                Return String.Format(localizedResourceString, values)
+            Else
+                Return $"[Missing Resource: {resourceKey}]"
+            End If
+        Catch ex As Exception
+            Debug.WriteLine($"Error retrieving resource {resourceKey}: {ex.Message}")
+            Return $"[Error: {resourceKey}]"
+        End Try
+    End Function
+
+    ' Set the current UI culture
+    Public Shared Sub SetCulture(cultureName As String)
+        Thread.CurrentThread.CurrentUICulture = New CultureInfo(cultureName)
+    End Sub
+End Class
 
 
