@@ -3046,5 +3046,165 @@ Public Class ResourceHelper
         Thread.CurrentThread.CurrentUICulture = New CultureInfo(cultureName)
     End Sub
 End Class
+===============Usung cascade cache
+Imports System.Globalization
+Imports System.Threading
+Imports System.Windows.Forms
+Imports System.Resources
+Imports System.Collections.Generic
+Imports System.Drawing
+Imports System.Diagnostics
+
+Public Class ResourceHelper
+    Private Shared ResourceManager As ResourceManager
+    Private Shared ResourceCache As Dictionary(Of String, Dictionary(Of String, String))
+
+    ' Initialize resource manager and cache
+    Private Shared Sub InitializeResourceManager(resourceBaseName As String, cultureName As String)
+        If ResourceManager Is Nothing OrElse Thread.CurrentThread.CurrentUICulture.Name <> cultureName Then
+            ResourceManager = New ResourceManager(resourceBaseName, GetType(ResourceHelper).Assembly)
+            Thread.CurrentThread.CurrentUICulture = New CultureInfo(cultureName)
+        End If
+
+        If ResourceCache Is Nothing Then
+            ResourceCache = New Dictionary(Of String, Dictionary(Of String, String))()
+        End If
+    End Sub
+
+    ' Apply resources to a form and its controls
+    Public Shared Sub ApplyResources(form As Form, resourceBaseName As String, cultureName As String)
+        InitializeResourceManager(resourceBaseName, cultureName)
+        ApplyResourceToForm(form)
+        ApplyResourcesRecursively(form)
+    End Sub
+
+    ' Apply resources recursively to controls
+    Private Shared Sub ApplyResourcesRecursively(parentControl As Control)
+        ApplyResourceToControl(parentControl)
+        For Each childControl As Control In parentControl.Controls
+            ApplyResourcesRecursively(childControl)
+        Next
+    End Sub
+
+    ' Apply resources to a control
+    Private Shared Sub ApplyResourceToControl(control As Control)
+        ApplyResourceToProperty(control, "Text")
+        ApplyResourceToProperty(control, "Location")
+        ApplyResourceToProperty(control, "ToolTipText")
+
+        If TypeOf control Is MenuStrip Then
+            ApplyResourcesToMenuStrip(CType(control, MenuStrip))
+        End If
+    End Sub
+
+    ' Apply resources to a MenuStrip control
+    Private Shared Sub ApplyResourcesToMenuStrip(menuStrip As MenuStrip)
+        For Each menuItem As ToolStripMenuItem In menuStrip.Items
+            ApplyResourceToMenuItem(menuItem)
+        Next
+    End Sub
+
+    ' Apply resources to a ToolStripMenuItem control
+    Private Shared Sub ApplyResourceToMenuItem(menuItem As ToolStripMenuItem)
+        ApplyResourceToProperty(menuItem, "Text")
+
+        For Each dropDownItem As ToolStripItem In menuItem.DropDownItems
+            If TypeOf dropDownItem Is ToolStripMenuItem Then
+                ApplyResourceToMenuItem(CType(dropDownItem, ToolStripMenuItem))
+            End If
+        Next
+    End Sub
+
+    ' Apply resource to a control property
+    Private Shared Sub ApplyResourceToProperty(control As Control, propertyName As String)
+        Dim resourceKey As String = $"{control.Name}.{propertyName}"
+        Dim resourceValue As String = GetCachedResourceValue(resourceKey)
+        If resourceValue IsNot Nothing Then
+            Dim prop As Reflection.PropertyInfo = control.GetType().GetProperty(propertyName)
+            If prop IsNot Nothing AndAlso prop.CanWrite Then
+                Dim convertedValue As Object = ConvertToType(resourceValue, prop.PropertyType)
+                If convertedValue IsNot Nothing Then
+                    prop.SetValue(control, convertedValue, Nothing)
+                End If
+            End If
+        End If
+    End Sub
+
+    ' Get resource value from cache or resource manager
+    Private Shared Function GetCachedResourceValue(resourceKey As String) As String
+        Dim currentCulture As String = Thread.CurrentThread.CurrentUICulture.Name
+
+        If Not ResourceCache.ContainsKey(currentCulture) Then
+            ResourceCache(currentCulture) = New Dictionary(Of String, String)()
+        End If
+
+        Dim cultureCache As Dictionary(Of String, String) = ResourceCache(currentCulture)
+
+        If cultureCache.ContainsKey(resourceKey) Then
+            Return cultureCache(resourceKey)
+        Else
+            Try
+                Dim resourceValue As String = ResourceManager.GetString(resourceKey, Thread.CurrentThread.CurrentUICulture)
+                If resourceValue IsNot Nothing Then
+                    cultureCache(resourceKey) = resourceValue
+                End If
+                Return resourceValue
+            Catch ex As Exception
+                Debug.WriteLine($"Error retrieving resource {resourceKey}: {ex.Message}")
+                Return Nothing
+            End Try
+        End If
+    End Function
+
+    ' Convert string value to target property type
+    Private Shared Function ConvertToType(value As String, targetType As Type) As Object
+        Try
+            If targetType Is GetType(String) Then
+                Return value
+            ElseIf targetType Is GetType(Integer) Then
+                Return Integer.Parse(value)
+            ElseIf targetType Is GetType(Boolean) Then
+                Return Boolean.Parse(value)
+            ElseIf targetType Is GetType(Point) Then
+                Dim parts() As String = value.Split(","c)
+                Return New Point(Integer.Parse(parts(0)), Integer.Parse(parts(1)))
+            Else
+                Return Convert.ChangeType(value, targetType)
+            End If
+        Catch ex As Exception
+            Debug.WriteLine($"Error converting value '{value}' to type '{targetType.Name}': {ex.Message}")
+            Return Nothing
+        End Try
+    End Function
+
+    ' Apply resource to form name
+    Private Shared Sub ApplyResourceToForm(form As Form)
+        Dim resourceKey As String = $"{form.Name}.Text"
+        Dim resourceValue As String = GetCachedResourceValue(resourceKey)
+        If resourceValue IsNot Nothing Then
+            form.Text = resourceValue
+        End If
+    End Sub
+
+    ' Set the culture for resource localization
+    Public Shared Sub SetCulture(cultureName As String)
+        Thread.CurrentThread.CurrentUICulture = New CultureInfo(cultureName)
+    End Sub
+
+    ' Get localized resource by key with optional formatting values
+    Public Shared Function GetLocalizedResourceByKey(resourceKey As String, ParamArray values As Object()) As String
+        Try
+            Dim localizedResourceString As String = GetCachedResourceValue(resourceKey)
+            If localizedResourceString IsNot Nothing Then
+                Return String.Format(localizedResourceString, values)
+            Else
+                Return $"[Missing Resource: {resourceKey}]"
+            End If
+        Catch ex As Exception
+            Debug.WriteLine($"Error retrieving resource {resourceKey}: {ex.Message}")
+            Return $"[Error: {resourceKey}]"
+        End Try
+    End Function
+End Class
 
 
