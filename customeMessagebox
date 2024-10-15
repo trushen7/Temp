@@ -117,3 +117,242 @@ If result = DialogResult.OK Then
 Else
     ' Handle Cancel action
 End If
+
+
+========
+Partial Class CustomMessageBox
+    Inherits Form
+
+    Private LabelMessage As Label
+    Private IconPictureBox As PictureBox
+    Private ButtonOK As Button
+    Private ButtonCancel As Button
+    Private ButtonYes As Button
+    Private ButtonNo As Button
+
+    ' Form constructor
+    Public Sub New()
+        InitializeComponent()
+    End Sub
+
+    ' This method is required for Windows Form Designer support
+    Private Sub InitializeComponent()
+        Me.LabelMessage = New Label()
+        Me.IconPictureBox = New PictureBox()
+        Me.ButtonOK = New Button()
+        Me.ButtonCancel = New Button()
+        Me.ButtonYes = New Button()
+        Me.ButtonNo = New Button()
+
+        ' 
+        ' LabelMessage
+        ' 
+        Me.LabelMessage.AutoSize = True
+        Me.LabelMessage.Location = New Point(70, 30)
+        Me.LabelMessage.Size = New Size(200, 50)
+
+        ' 
+        ' IconPictureBox
+        ' 
+        Me.IconPictureBox.Location = New Point(15, 30)
+        Me.IconPictureBox.Size = New Size(32, 32)
+
+        ' 
+        ' ButtonOK
+        ' 
+        Me.ButtonOK.Location = New Point(50, 100)
+        Me.ButtonOK.Size = New Size(75, 25)
+
+        ' 
+        ' ButtonCancel
+        ' 
+        Me.ButtonCancel.Location = New Point(150, 100)
+        Me.ButtonCancel.Size = New Size(75, 25)
+
+        ' 
+        ' ButtonYes
+        ' 
+        Me.ButtonYes.Location = New Point(50, 100)
+        Me.ButtonYes.Size = New Size(75, 25)
+
+        ' 
+        ' ButtonNo
+        ' 
+        Me.ButtonNo.Location = New Point(150, 100)
+        Me.ButtonNo.Size = New Size(75, 25)
+
+        ' 
+        ' CustomMessageBox
+        ' 
+        Me.ClientSize = New Size(300, 150)
+        Me.Controls.Add(Me.LabelMessage)
+        Me.Controls.Add(Me.IconPictureBox)
+        Me.Controls.Add(Me.ButtonOK)
+        Me.Controls.Add(Me.ButtonCancel)
+        Me.Controls.Add(Me.ButtonYes)
+        Me.Controls.Add(Me.ButtonNo)
+        Me.FormBorderStyle = FormBorderStyle.FixedDialog
+        Me.MaximizeBox = False
+        Me.MinimizeBox = False
+        Me.StartPosition = FormStartPosition.CenterParent
+        Me.Text = "Custom Message"
+    End Sub
+End Class
+
+=======
+Imports System.Drawing
+Imports System.Windows.Forms
+
+Public Partial Class CustomMessageBox
+    Inherits Form
+
+    Private Enum ButtonOptions
+        OK
+        OKCancel
+        YesNo
+        YesNoCancel
+    End Enum
+
+    Private ButtonConfiguration As ButtonOptions
+
+    ' Constructor for displaying the custom message box
+    Public Sub New(message As String, title As String, icon As MessageBoxIcon, buttons As ButtonOptions)
+        InitializeComponent()
+        Me.Text = title
+        Me.LabelMessage.Text = message
+        SetIcon(icon)
+        ButtonConfiguration = buttons
+        ConfigureButtons()
+    End Sub
+
+    ' Configure buttons based on the selected configuration
+    Private Sub ConfigureButtons()
+        ButtonOK.Visible = False
+        ButtonCancel.Visible = False
+        ButtonYes.Visible = False
+        ButtonNo.Visible = False
+
+        Select Case ButtonConfiguration
+            Case ButtonOptions.OK
+                ButtonOK.Text = My.Resources.ButtonOKText
+                ButtonOK.Visible = True
+
+            Case ButtonOptions.OKCancel
+                ButtonOK.Text = My.Resources.ButtonOKText
+                ButtonCancel.Text = My.Resources.ButtonCancelText
+                ButtonOK.Visible = True
+                ButtonCancel.Visible = True
+
+            Case ButtonOptions.YesNo
+                ButtonYes.Text = My.Resources.ButtonYesText
+                ButtonNo.Text = My.Resources.ButtonNoText
+                ButtonYes.Visible = True
+                ButtonNo.Visible = True
+
+            Case ButtonOptions.YesNoCancel
+                ButtonYes.Text = My.Resources.ButtonYesText
+                ButtonNo.Text = My.Resources.ButtonNoText
+                ButtonCancel.Text = My.Resources.ButtonCancelText
+                ButtonYes.Visible = True
+                ButtonNo.Visible = True
+                ButtonCancel.Visible = True
+        End Select
+    End Sub
+
+    ' Method to set the icon based on MessageBoxIcon
+    Private Sub SetIcon(icon As MessageBoxIcon)
+        Select Case icon
+            Case MessageBoxIcon.Information
+                Me.IconPictureBox.Image = SystemIcons.Information.ToBitmap()
+            Case MessageBoxIcon.Warning
+                Me.IconPictureBox.Image = SystemIcons.Warning.ToBitmap()
+            Case MessageBoxIcon.Error
+                Me.IconPictureBox.Image = SystemIcons.Error.ToBitmap()
+            Case MessageBoxIcon.Question
+                Me.IconPictureBox.Image = SystemIcons.Question.ToBitmap()
+            Case Else
+                Me.IconPictureBox.Visible = False
+        End Select
+    End Sub
+
+    ' Event handlers for button clicks
+    Private Sub ButtonOK_Click(sender As Object, e As EventArgs) Handles ButtonOK.Click
+        Me.DialogResult = DialogResult.OK
+        Me.Close()
+    End Sub
+
+    Private Sub ButtonCancel_Click(sender As Object, e As EventArgs) Handles ButtonCancel.Click
+        Me.DialogResult = DialogResult.Cancel
+        Me.Close()
+    End Sub
+
+    Private Sub ButtonYes_Click(sender As Object, e As EventArgs) Handles ButtonYes.Click
+        Me.DialogResult = DialogResult.Yes
+        Me.Close()
+    End Sub
+
+    Private Sub ButtonNo_Click(sender As Object, e As EventArgs) Handles ButtonNo.Click
+        Me.DialogResult = DialogResult.No
+        Me.Close()
+    End Sub
+
+    ' Static method to show the custom message box
+    Public Shared Function Show(message As String, title As String, icon As MessageBoxIcon, buttons As ButtonOptions) As DialogResult
+        Using msgBox As New CustomMessageBox(message, title, icon, buttons)
+            Return msgBox.ShowDialog()
+        End Using
+    End Function
+End Class
+
+==========
+Dim result As DialogResult
+
+' Example using OK button
+result = CustomMessageBox.Show("This is a test message.", "Test Title", MessageBoxIcon.Information, CustomMessageBox.ButtonOptions.OK)
+If result = DialogResult.OK Then
+    ' Handle OK action
+End If
+
+' Example using Yes/No button
+result = CustomMessageBox.Show("Do you want to continue?", "Confirmation", MessageBoxIcon.Question, CustomMessageBox.ButtonOptions.YesNo)
+If result = DialogResult.Yes Then
+    ' Handle Yes action
+ElseIf result = DialogResult.No Then
+    ' Handle No action
+End If
+
+' Example using Yes/No/Cancel button
+result = CustomMessageBox.Show("Do you want to save changes?", "Save Changes", MessageBoxIcon.Warning, CustomMessageBox.ButtonOptions.YesNoCancel)
+If result = DialogResult.Yes Then
+    ' Handle Yes action
+ElseIf result = DialogResult.No Then
+    ' Handle No action
+ElseIf result = DialogResult.Cancel Then
+    ' Handle Cancel action
+End If
+
+=========
+
+<Flags>
+Public Enum ButtonOptions
+    None = 0
+    OK = 1
+    Cancel = 2
+    Yes = 4
+    No = 8
+    YesNoCancel = Yes Or No Or Cancel
+    OKCancel = OK Or Cancel
+End Enum
+========
+
+Private Sub ConfigureButtons(buttons As ButtonOptions)
+    ButtonOK.Visible = (buttons And ButtonOptions.OK) <> 0
+    ButtonCancel.Visible = (buttons And ButtonOptions.Cancel) <> 0
+    ButtonYes.Visible = (buttons And ButtonOptions.Yes) <> 0
+    ButtonNo.Visible = (buttons And ButtonOptions.No) <> 0
+
+    If ButtonOK.Visible Then ButtonOK.Text = My.Resources.ButtonOKText
+    If ButtonCancel.Visible Then ButtonCancel.Text = My.Resources.ButtonCancelText
+    If ButtonYes.Visible Then ButtonYes.Text = My.Resources.ButtonYesText
+    If ButtonNo.Visible Then ButtonNo.Text = My.Resources.ButtonNoText
+End Sub
