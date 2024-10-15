@@ -1,0 +1,119 @@
+Partial Class CustomMessageBox
+    Inherits Form
+
+    Private LabelMessage As Label
+    Private IconPictureBox As PictureBox
+    Private ButtonOK As Button
+    Private ButtonCancel As Button
+
+    ' Form constructor
+    Public Sub New()
+        InitializeComponent()
+    End Sub
+
+    ' This method is required for Windows Form Designer support
+    Private Sub InitializeComponent()
+        Me.LabelMessage = New Label()
+        Me.IconPictureBox = New PictureBox()
+        Me.ButtonOK = New Button()
+        Me.ButtonCancel = New Button()
+        
+        ' 
+        ' LabelMessage
+        ' 
+        Me.LabelMessage.AutoSize = True
+        Me.LabelMessage.Location = New Point(70, 30)
+        Me.LabelMessage.Size = New Size(200, 50)
+        
+        ' 
+        ' IconPictureBox
+        ' 
+        Me.IconPictureBox.Location = New Point(15, 30)
+        Me.IconPictureBox.Size = New Size(32, 32)
+        
+        ' 
+        ' ButtonOK
+        ' 
+        Me.ButtonOK.Location = New Point(50, 100)
+        Me.ButtonOK.Size = New Size(75, 25)
+        Me.ButtonOK.Text = "OK"
+        
+        ' 
+        ' ButtonCancel
+        ' 
+        Me.ButtonCancel.Location = New Point(150, 100)
+        Me.ButtonCancel.Size = New Size(75, 25)
+        Me.ButtonCancel.Text = "Cancel"
+        
+        ' 
+        ' CustomMessageBox
+        ' 
+        Me.ClientSize = New Size(300, 150)
+        Me.Controls.Add(Me.LabelMessage)
+        Me.Controls.Add(Me.IconPictureBox)
+        Me.Controls.Add(Me.ButtonOK)
+        Me.Controls.Add(Me.ButtonCancel)
+        Me.FormBorderStyle = FormBorderStyle.FixedDialog
+        Me.MaximizeBox = False
+        Me.MinimizeBox = False
+        Me.StartPosition = FormStartPosition.CenterParent
+        Me.Text = "Custom Message"
+    End Sub
+End Class
+
+
+=========Imports System.Drawing
+Imports System.Windows.Forms
+
+Public Partial Class CustomMessageBox
+    Inherits Form
+
+    Public Sub New(message As String, title As String, Optional icon As MessageBoxIcon = MessageBoxIcon.None)
+        InitializeComponent()
+        Me.Text = title
+        Me.LabelMessage.Text = message
+        SetIcon(icon)
+    End Sub
+
+    ' Method to set the icon based on MessageBoxIcon
+    Private Sub SetIcon(icon As MessageBoxIcon)
+        Select Case icon
+            Case MessageBoxIcon.Information
+                Me.IconPictureBox.Image = SystemIcons.Information.ToBitmap()
+            Case MessageBoxIcon.Warning
+                Me.IconPictureBox.Image = SystemIcons.Warning.ToBitmap()
+            Case MessageBoxIcon.Error
+                Me.IconPictureBox.Image = SystemIcons.Error.ToBitmap()
+            Case MessageBoxIcon.Question
+                Me.IconPictureBox.Image = SystemIcons.Question.ToBitmap()
+            Case Else
+                Me.IconPictureBox.Visible = False
+        End Select
+    End Sub
+
+    ' Event handler for OK button click
+    Private Sub ButtonOK_Click(sender As Object, e As EventArgs) Handles ButtonOK.Click
+        Me.DialogResult = DialogResult.OK
+        Me.Close()
+    End Sub
+
+    ' Event handler for Cancel button click
+    Private Sub ButtonCancel_Click(sender As Object, e As EventArgs) Handles ButtonCancel.Click
+        Me.DialogResult = DialogResult.Cancel
+        Me.Close()
+    End Sub
+
+    ' Static method to show the custom message box
+    Public Shared Function Show(message As String, title As String, Optional icon As MessageBoxIcon = MessageBoxIcon.None) As DialogResult
+        Using msgBox As New CustomMessageBox(message, title, icon)
+            Return msgBox.ShowDialog()
+        End Using
+    End Function
+End Class
+
+Dim result As DialogResult = CustomMessageBox.Show("This is a test message.", "Test Title", MessageBoxIcon.Information)
+If result = DialogResult.OK Then
+    ' Handle OK action
+Else
+    ' Handle Cancel action
+End If
