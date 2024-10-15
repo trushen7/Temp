@@ -437,3 +437,96 @@ Partial Class CustomMessageBox
         Me.Text = "Custom Message"
     End Sub
 End Class
+
+=========
+
+Partial Class CustomMessageBox
+    Inherits Form
+
+    Private LabelMessage As Label
+    Private IconPictureBox As PictureBox
+    Private ButtonOK As Button
+    Private ButtonCancel As Button
+    Private ButtonYes As Button
+    Private ButtonNo As Button
+
+    ' Form constructor
+    Public Sub New()
+        InitializeComponent()
+    End Sub
+
+    ' This method is required for Windows Form Designer support
+    Private Sub InitializeComponent()
+        Me.LabelMessage = New Label()
+        Me.IconPictureBox = New PictureBox()
+        Me.ButtonOK = New Button()
+        Me.ButtonCancel = New Button()
+        Me.ButtonYes = New Button()
+        Me.ButtonNo = New Button()
+
+        ' 
+        ' LabelMessage
+        ' 
+        Me.LabelMessage.AutoSize = True
+        Me.LabelMessage.Location = New Point(70, 40)
+        Me.LabelMessage.MaximumSize = New Size(250, 0) ' Set a max width to keep it neat
+        Me.LabelMessage.Size = New Size(200, 50)
+
+        ' 
+        ' IconPictureBox
+        ' 
+        Me.IconPictureBox.Location = New Point(15, 40)
+        Me.IconPictureBox.Size = New Size(32, 32)
+        Me.IconPictureBox.SizeMode = PictureBoxSizeMode.StretchImage
+
+        ' 
+        ' ButtonOK
+        ' 
+        Me.ButtonOK.DialogResult = DialogResult.OK
+        Me.ButtonOK.Location = New Point(70, 100)
+        Me.ButtonOK.Size = New Size(75, 23)
+        Me.ButtonOK.Text = My.Resources.ButtonOKText
+
+        ' 
+        ' ButtonCancel
+        ' 
+        Me.ButtonCancel.DialogResult = DialogResult.Cancel
+        Me.ButtonCancel.Location = New Point(160, 100)
+        Me.ButtonCancel.Size = New Size(75, 23)
+        Me.ButtonCancel.Text = My.Resources.ButtonCancelText
+
+        ' 
+        ' ButtonYes
+        ' 
+        Me.ButtonYes.DialogResult = DialogResult.Yes
+        Me.ButtonYes.Location = New Point(70, 100)
+        Me.ButtonYes.Size = New Size(75, 23)
+        Me.ButtonYes.Text = My.Resources.ButtonYesText
+
+        ' 
+        ' ButtonNo
+        ' 
+        Me.ButtonNo.DialogResult = DialogResult.No
+        Me.ButtonNo.Location = New Point(160, 100)
+        Me.ButtonNo.Size = New Size(75, 23)
+        Me.ButtonNo.Text = My.Resources.ButtonNoText
+
+        ' 
+        ' CustomMessageBox
+        ' 
+        Me.ClientSize = New Size(300, 150)
+        Me.Controls.Add(Me.LabelMessage)
+        Me.Controls.Add(Me.IconPictureBox)
+        Me.Controls.Add(Me.ButtonOK)
+        Me.Controls.Add(Me.ButtonCancel)
+        Me.Controls.Add(Me.ButtonYes)
+        Me.Controls.Add(Me.ButtonNo)
+        Me.FormBorderStyle = FormBorderStyle.FixedDialog
+        Me.MaximizeBox = False
+        Me.MinimizeBox = False
+        Me.StartPosition = FormStartPosition.CenterParent
+        Me.Text = "Custom Message"
+        Me.AcceptButton = Me.ButtonOK
+        Me.CancelButton = Me.ButtonCancel
+    End Sub
+End Class
