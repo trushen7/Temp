@@ -24,4 +24,124 @@ Public Class VerticalCenterTextBox
         MyBase.OnTextChanged(e)
         Me.Invalidate() ' Redraw the control when text changes
     End Sub
+End Cl
+
+=======
+Imports System.Drawing
+Imports System.Windows.Forms
+
+Public Partial Class CustomMessageBox
+    Inherits Form
+
+    <Flags>
+    Public Enum ButtonOptions
+        None = 0
+        OK = 1
+        Cancel = 2
+        Yes = 4
+        No = 8
+        YesNoCancel = Yes Or No Or Cancel
+        OKCancel = OK Or Cancel
+    End Enum
+
+    Private ButtonConfiguration As ButtonOptions
+
+    ' Constructor for displaying the custom message box
+    Public Sub New(message As String, title As String, icon As MessageBoxIcon, buttons As ButtonOptions)
+        InitializeComponent()
+        Me.Text = title
+        Me.LabelMessage.Text = message
+        SetIcon(icon)
+        ButtonConfiguration = buttons
+        ConfigureButtons()
+        CenterMessageText()
+    End Sub
+
+    ' Configure buttons based on the selected configuration
+    Private Sub ConfigureButtons()
+        ButtonOK.Visible = False
+        ButtonCancel.Visible = False
+        ButtonYes.Visible = False
+        ButtonNo.Visible = False
+
+        Select Case ButtonConfiguration
+            Case ButtonOptions.OK
+                ButtonOK.Visible = True
+
+            Case ButtonOptions.OKCancel
+                ButtonOK.Visible = True
+                ButtonCancel.Visible = True
+
+            Case ButtonOptions.Yes
+                ButtonYes.Visible = True
+                ButtonNo.Visible = True
+
+            Case ButtonOptions.YesNoCancel
+                ButtonYes.Visible = True
+                ButtonNo.Visible = True
+                ButtonCancel.Visible = True
+        End Select
+    End Sub
+
+    ' Method to set the icon based on MessageBoxIcon
+    Private Sub SetIcon(icon As MessageBoxIcon)
+        Select Case icon
+            Case MessageBoxIcon.Information
+                Me.IconPictureBox.Image = SystemIcons.Information.ToBitmap()
+            Case MessageBoxIcon.Warning
+                Me.IconPictureBox.Image = SystemIcons.Warning.ToBitmap()
+            Case MessageBoxIcon.Error
+                Me.IconPictureBox.Image = SystemIcons.Error.ToBitmap()
+            Case MessageBoxIcon.Question
+                Me.IconPictureBox.Image = SystemIcons.Question.ToBitmap()
+            Case Else
+                Me.IconPictureBox.Visible = False
+        End Select
+    End Sub
+
+    ' Method to center the message text vertically
+    Private Sub CenterMessageText()
+        ' Center the label in the available space above the button panel
+        Dim totalHeight As Integer = Me.ClientSize.Height
+        Dim buttonPanelHeight As Integer = ButtonPanel.Height
+        Dim messageHeight As Integer = LabelMessage.PreferredHeight
+
+        ' Calculate the top position for the label
+        Dim y As Integer = (totalHeight - buttonPanelHeight - messageHeight) / 2
+        LabelMessage.Top = Math.Max(y, 10) ' Ensure a minimum top margin
+    End Sub
+
+    ' Event handlers for button clicks
+    Private Sub ButtonOK_Click(sender As Object, e As EventArgs) Handles ButtonOK.Click
+        Me.DialogResult = DialogResult.OK
+        Me.Close()
+    End Sub
+
+    Private Sub ButtonCancel_Click(sender As Object, e As EventArgs) Handles ButtonCancel.Click
+        Me.DialogResult = DialogResult.Cancel
+        Me.Close()
+    End Sub
+
+    Private Sub ButtonYes_Click(sender As Object, e As EventArgs) Handles ButtonYes.Click
+        Me.DialogResult = DialogResult.Yes
+        Me.Close()
+    End Sub
+
+    Private Sub ButtonNo_Click(sender As Object, e As EventArgs) Handles ButtonNo.Click
+        Me.DialogResult = DialogResult.No
+        Me.Close()
+    End Sub
+
+    ' Static method to show the custom message box
+    Public Shared Function Show(message As String, title As String, icon As MessageBoxIcon, buttons As ButtonOptions) As DialogResult
+        Using msgBox As New CustomMessageBox(message, title, icon, buttons)
+            Return msgBox.ShowDialog()
+        End Using
+    End Function
+
+    ' Override the OnResize event to recalculate the message position
+    Protected Overrides Sub OnResize(e As EventArgs)
+        MyBase.OnResize(e)
+        CenterMessageText() ' Re-center the message when the form is resized
+    End Sub
 End Class
