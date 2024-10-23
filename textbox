@@ -1,0 +1,27 @@
+Imports System.Windows.Forms
+Imports System.Drawing
+
+Public Class VerticalCenterTextBox
+    Inherits TextBox
+
+    Protected Overrides Sub OnPaint(ByVal e As PaintEventArgs)
+        ' Prevent flickering
+        Dim g As Graphics = e.Graphics
+        Dim textRect As Rectangle = Me.ClientRectangle
+
+        ' Calculate the text size
+        Dim textSize As SizeF = g.MeasureString(Me.Text, Me.Font)
+
+        ' Calculate the position to start drawing the text
+        Dim y As Single = (textRect.Height - textSize.Height) / 2
+        Dim x As Single = (textRect.Width - textSize.Width) / 2
+
+        ' Draw the text
+        g.DrawString(Me.Text, Me.Font, New SolidBrush(Me.ForeColor), New PointF(x, y))
+    End Sub
+
+    Protected Overrides Sub OnTextChanged(ByVal e As EventArgs)
+        MyBase.OnTextChanged(e)
+        Me.Invalidate() ' Redraw the control when text changes
+    End Sub
+End Class
