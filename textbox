@@ -145,3 +145,30 @@ Public Partial Class CustomMessageBox
         CenterMessageText() ' Re-center the message when the form is resized
     End Sub
 End Class
+
+
+ ' Adjust the form size based on content, including the button panel and icon box
+Private Sub AdjustFormSize()
+    ' Width adjustment based on message, icon, and padding
+    Dim iconWidth As Integer = If(IconPictureBox.Visible, IconPictureBox.Width + 10, 0)
+    Dim messageWidth As Integer = LabelMessage.PreferredWidth + iconWidth + 30 ' Padding for sides
+    Me.Width = Math.Max(300, messageWidth) ' Minimum width to ensure consistent form size
+
+    ' Height adjustment based on icon, message, and button panel heights
+    Dim iconHeight As Integer = If(IconPictureBox.Visible, IconPictureBox.Height + 10, 0)
+    Dim messageHeight As Integer = LabelMessage.PreferredHeight + 20 ' Padding for top and bottom
+    Dim buttonPanelHeight As Integer = ButtonPanel.Height
+
+    ' Set form height to fit icon, message, and button panel comfortably
+    Me.Height = iconHeight + messageHeight + buttonPanelHeight + 40 ' Additional padding
+End Sub
+
+' Center the message text vertically between the icon and button panel
+Private Sub CenterMessageText()
+    Dim availableHeight As Integer = Me.ClientSize.Height - ButtonPanel.Height
+    Dim messageHeight As Integer = LabelMessage.PreferredHeight
+
+    ' Calculate position for the message, centered between icon and buttons
+    Dim y As Integer = (availableHeight - messageHeight) / 2
+    LabelMessage.Top = Math.Max(y, 10) ' Minimum top margin for padding
+End Sub
