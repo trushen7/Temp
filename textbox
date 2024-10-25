@@ -172,3 +172,32 @@ Private Sub CenterMessageText()
     Dim y As Integer = (availableHeight - messageHeight) / 2
     LabelMessage.Top = Math.Max(y, 10) ' Minimum top margin for padding
 End Sub
+======
+
+Private Sub AdjustFormSize()
+    Dim iconWidth As Integer = If(IconPictureBox.Visible, IconPictureBox.Width + 10, 0) ' Spacing for icon
+    Dim messageWidth As Integer = LabelMessage.PreferredWidth + 10 ' Add a little spacing after the label
+    Me.Width = Math.Max(350, iconWidth + messageWidth + 30) ' Ensure minimum width
+    
+    Dim buttonPanelHeight As Integer = ButtonPanel.Height
+    Dim iconHeight As Integer = If(IconPictureBox.Visible, IconPictureBox.Height, 0) ' Only use the height if the icon is visible
+    Dim messageHeight As Integer = LabelMessage.PreferredHeight
+
+    ' Set form height to fit the icon and message, plus the button panel
+    Me.Height = Math.Max(iconHeight, messageHeight) + buttonPanelHeight + 40 ' Add padding for the total height
+End Sub
+
+Private Sub CenterMessageText()
+    ' Position the icon
+    If IconPictureBox.Visible Then
+        IconPictureBox.Left = 10 ' Set some space from the left edge of the form
+        IconPictureBox.Top = (Me.ClientSize.Height - IconPictureBox.Height) / 2 ' Center icon vertically within the available space
+    End If
+
+    ' Position the label next to the icon
+    LabelMessage.Left = If(IconPictureBox.Visible, IconPictureBox.Right + 10, 10) ' Position label to the right of the icon or at a default position
+    LabelMessage.Top = (Me.ClientSize.Height - LabelMessage.PreferredHeight) / 2 ' Center the label vertically
+
+    ' Adjust the width of the form to accommodate both icon and label
+    AdjustFormSize() ' Call this to ensure form size is adjusted after positioning
+End Sub
