@@ -201,3 +201,140 @@ Private Sub CenterMessageText()
     ' Adjust the width of the form to accommodate both icon and label
     AdjustFormSize() ' Call this to ensure form size is adjusted after positioning
 End Sub
+
+
+========
+Imports System.Drawing
+Imports System.Windows.Forms
+
+Public Partial Class CustomMessageBox
+    Inherits Form
+
+    <Flags>
+    Public Enum ButtonOptions
+        None = 0
+        OK = 1
+        Cancel = 2
+        Yes = 4
+        No = 8
+        YesNoCancel = Yes Or No Or Cancel
+        OKCancel = OK Or Cancel
+    End Enum
+
+    Private ButtonConfiguration As ButtonOptions
+
+    ' Constructor for displaying the custom message box
+    Public Sub New(message As String, title As String, icon As MessageBoxIcon, buttons As ButtonOptions)
+        InitializeComponent()
+        Me.Text = title
+        Me.LabelMessage.Text = message
+        SetIcon(icon)
+        ButtonConfiguration = buttons
+        ConfigureButtons()
+        AdjustLayout()
+    End Sub
+
+    ' Configure buttons based on the selected configuration
+    Private Sub ConfigureButtons()
+        ButtonOK.Visible = False
+        ButtonCancel.Visible = False
+        ButtonYes.Visible = False
+        ButtonNo.Visible = False
+
+        Select Case ButtonConfiguration
+            Case ButtonOptions.OK
+                ButtonOK.Visible = True
+            Case ButtonOptions.OKCancel
+                ButtonOK.Visible = True
+                ButtonCancel.Visible = True
+            Case ButtonOptions.Yes
+                ButtonYes.Visible = True
+                ButtonNo.Visible = True
+            Case ButtonOptions.YesNoCancel
+                ButtonYes.Visible = True
+                ButtonNo.Visible = True
+                ButtonCancel.Visible = True
+        End Select
+    End Sub
+
+    ' Method to set the icon based on MessageBoxIcon
+    Private Sub SetIcon(icon As MessageBoxIcon)
+        IconPictureBox.Visible = True ' Ensure icon is visible if set
+        Select Case icon
+            Case MessageBoxIcon.Information
+                IconPictureBox.Image = SystemIcons.Information.ToBitmap()
+            Case MessageBoxIcon.Warning
+                IconPictureBox.Image = SystemIcons.Warning.ToBitmap()
+            Case MessageBoxIcon.Error
+                IconPictureBox.Image = SystemIcons.Error.ToBitmap()
+            Case MessageBoxIcon.Question
+                IconPictureBox.Image = SystemIcons.Question.ToBitmap()
+            Case Else
+                IconPictureBox.Visible = False
+        End Select
+    End Sub
+
+    ' Adjust the layout of the form and its controls
+    Private Sub AdjustLayout()
+        AdjustFormSize()
+        CenterControls()
+    End Sub
+
+    ' Adjust the form size based on content
+    Private Sub AdjustFormSize()
+        Dim iconWidth As Integer = If(IconPictureBox.Visible, IconPictureBox.Width + 10, 0)
+        Dim messageWidth As Integer = LabelMessage.PreferredWidth + 10
+        Me.Width = Math.Max(350, iconWidth + messageWidth + 30)
+
+        Dim buttonPanelHeight As Integer = ButtonPanel.Height
+        Dim iconHeight As Integer = If(IconPictureBox.Visible, IconPictureBox.Height, 0)
+        Dim messageHeight As Integer = LabelMessage.PreferredHeight
+
+        Me.Height = Math.Max(iconHeight, messageHeight) + buttonPanelHeight + 40
+    End Sub
+
+    ' Center controls horizontally and vertically
+    Private Sub CenterControls()
+        If IconPictureBox.Visible Then
+            IconPictureBox.Left = 10
+            IconPictureBox.Top = (Me.ClientSize.Height - IconPictureBox.Height) / 2
+        End If
+
+        LabelMessage.Left = If(IconPictureBox.Visible, IconPictureBox.Right + 10, 10)
+        LabelMessage.Top = (Me.ClientSize.Height - LabelMessage.PreferredHeight) / 2
+    End Sub
+
+    ' Event handlers for button clicks
+    Private Sub ButtonOK_Click(sender As Object, e As EventArgs) Handles ButtonOK.Click
+        Me.DialogResult = DialogResult.OK
+        Me.Close()
+    End Sub
+
+    Private Sub ButtonCancel_Click(sender As Object, e As EventArgs) Handles ButtonCancel.Click
+        Me.DialogResult = DialogResult.Cancel
+        Me.Close()
+    End Sub
+
+    Private Sub ButtonYes_Click(sender As Object, e As EventArgs) Handles ButtonYes.Click
+        Me.DialogResult = DialogResult.Yes
+        Me.Close()
+    End Sub
+
+    Private Sub ButtonNo_Click(sender As Object, e As EventArgs) Handles ButtonNo.Click
+        Me.DialogResult = DialogResult.No
+        Me.Close()
+    End Sub
+
+    ' Static method to show the custom message box
+    Public Shared Function Show(message As String, title As String, icon As MessageBoxIcon, buttons As ButtonOptions) As DialogResult
+        Using msgBox As New CustomMessageBox(message, title, icon, buttons)
+            Return msgBox.ShowDialog()
+        End Using
+    End Function
+
+    ' Override the OnResize event to recalculate layout
+    Protected Overrides Sub OnResize(e As EventArgs)
+        MyBase.OnResize(e)
+        AdjustLayout() ' Recalculate layout when the form is resized
+    End Sub
+End Class
