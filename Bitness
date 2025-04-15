@@ -1,0 +1,207 @@
+Imports Microsoft.Win32
+Imports System.IO
+Imports System.Diagnostics
+
+Module LaunchOfficeApp
+
+    Sub Main()
+        Try
+            Dim bitness As String = GetOfficeBitness()
+
+            If bitness = "x64" Then
+                LaunchApp("app_x64.exe")
+            ElseIf bitness = "x86" Then
+                LaunchApp("app_x86.exe")
+            Else
+                Console.WriteLine("Office not found or bitness could not be determined.")
+            End If
+
+        Catch ex As Exception
+            Console.WriteLine("Error: " & ex.Message)
+        End Try
+    End Sub
+
+    Function GetOfficeBitness() As String
+        Dim regPaths As String() = {
+            "SOFTWARE\Microsoft\Office",
+            "SOFTWARE\WOW6432Node\Microsoft\Office"
+        }
+
+        Dim bestVersion As Double = 0
+        Dim resultBitness As String = Nothing
+        Dim versionPattern As New System.Text.RegularExpressions.Regex("^\d+\.\d+$")
+
+        For Each basePath In regPaths
+            Try
+                Using baseKey = Registry.LocalMachine.OpenSubKey(basePath)
+                    If baseKey Is Nothing Then Continue For
+
+                    For Each subKeyName In baseKey.GetSubKeyNames()
+                        If Not versionPattern.IsMatch(subKeyName) Then Continue For
+
+                        Dim version As Double
+                        If Not Double.TryParse(subKeyName, version) OrElse version < 14.0 OrElse version <= bestVersion Then Continue For
+
+                        Dim subPaths As String() = {"Outlook", "Word", ""} ' Try multiple app keys and root
+
+                        For Each sub In subPaths
+                            Using officeKey = baseKey.OpenSubKey(Path.Combine(subKeyName, sub))
+                                If officeKey IsNot Nothing Then
+                                    Dim bitnessVal = officeKey.GetValue("Bitness")
+                                    If bitnessVal IsNot Nothing Then
+                                        resultBitness = bitnessVal.ToString()
+                                        bestVersion = version
+                                        Exit For
+                                    End If
+                                End If
+                            End Using
+                            If resultBitness IsNot Nothing Then Exit For
+                        Next
+                    Next
+                End Using
+            Catch ex As Exception
+                ' Ignore and try next
+            End Try
+        Next
+
+        Return resultBitness
+    End Function
+
+    Sub LaunchApp(fileName As String)
+        Dim currentDir As String = AppDomain.CurrentDomain.BaseDirectory
+        Dim fullPath As String = Path.Combine(currentDir, fileName)
+
+        If File.Exists(fullPath) Then
+            Process.Start(fullPath)
+            Console.WriteLine("Launched: " & fileName)
+        Else
+            Console.WriteLine("Executable not found: " & fullPath)
+        End If
+    End Sub
+
+End Module
+
+
+=======
+
+Imports Microsoft.Win32
+Imports System.IO
+Imports System.Diagnostics
+Imports System.Net
+Imports System.Text
+
+Module LaunchOfficeApp
+
+    Sub Main()
+        Try
+            Dim bitness As String = GetOfficeBitness()
+            Log("Detected Office Bitness: " & If(bitness, "Unknown"))
+
+            Dim exeToLaunch As String = If(bitness = "x64", "app_x64.exe",
+                                           If(bitness = "x86", "app_x86.exe", Nothing))
+
+            If exeToLaunch Is Nothing Then
+                Log("Office not found or bitness could not be determined.")
+                Return
+            End If
+
+            LaunchApp(exeToLaunch)
+
+            ' Optional telemetry (commented out for privacy/security; enable if needed)
+            'SendTelemetry("launch", bitness)
+
+        Catch ex As Exception
+            Log("Exception: " & ex.Message)
+        End Try
+    End Sub
+
+    Function GetOfficeBitness() As String
+        Dim regPaths As String() = {
+            "SOFTWARE\Microsoft\Office",
+            "SOFTWARE\WOW6432Node\Microsoft\Office"
+        }
+
+        Dim bestVersion As Double = 0
+        Dim resultBitness As String = Nothing
+        Dim versionPattern As New System.Text.RegularExpressions.Regex("^\d+\.\d+$")
+
+        For Each basePath In regPaths
+            Try
+                Using baseKey = Registry.LocalMachine.OpenSubKey(basePath)
+                    If baseKey Is Nothing Then Continue For
+
+                    For Each subKeyName In baseKey.GetSubKeyNames()
+                        If Not versionPattern.IsMatch(subKeyName) Then Continue For
+
+                        Dim version As Double
+                        If Not Double.TryParse(subKeyName, version) OrElse version < 14.0 OrElse version <= bestVersion Then Continue For
+
+                        Dim subPaths As String() = {"Outlook", "Word", ""}
+
+                        For Each sub In subPaths
+                            Using officeKey = baseKey.OpenSubKey(Path.Combine(subKeyName, sub))
+                                If officeKey IsNot Nothing Then
+                                    Dim bitnessVal = officeKey.GetValue("Bitness")
+                                    If bitnessVal IsNot Nothing Then
+                                        resultBitness = bitnessVal.ToString()
+                                        bestVersion = version
+                                        Exit For
+                                    End If
+                                End If
+                            End Using
+                            If resultBitness IsNot Nothing Then Exit For
+                        Next
+                    Next
+                End Using
+            Catch ex As Exception
+                Log("Error reading registry " & basePath & ": " & ex.Message)
+            End Try
+        Next
+
+        Return resultBitness
+    End Function
+
+    Sub LaunchApp(fileName As String)
+        Dim currentDir As String = AppDomain.CurrentDomain.BaseDirectory
+        Dim fullPath As String = Path.Combine(currentDir, fileName)
+
+        If File.Exists(fullPath) Then
+            Process.Start(fullPath)
+            Log("Launched: " & fileName)
+        Else
+            Log("Executable not found: " & fullPath)
+        End If
+    End Sub
+
+    Sub Log(message As String)
+        Dim logFile As String = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "launch.log")
+        Using writer As New StreamWriter(logFile, append:=True)
+            writer.WriteLine($"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - {message}")
+        End Using
+    End Sub
+
+    ' Optional: send telemetry to a server (disabled for safety)
+    Sub SendTelemetry(eventType As String, bitness As String)
+        Try
+            Dim data As String = $"event={eventType}&bitness={bitness}"
+            Dim byteData As Byte() = Encoding.UTF8.GetBytes(data)
+
+            Dim req As HttpWebRequest = CType(WebRequest.Create("https://your-server.com/track"), HttpWebRequest)
+            req.Method = "POST"
+            req.ContentType = "application/x-www-form-urlencoded"
+            req.ContentLength = byteData.Length
+
+            Using reqStream = req.GetRequestStream()
+                reqStream.Write(byteData, 0, byteData.Length)
+            End Using
+
+            Using resp = CType(req.GetResponse(), HttpWebResponse)
+                Log("Telemetry sent: " & resp.StatusCode.ToString())
+            End Using
+
+        Catch ex As Exception
+            Log("Telemetry failed: " & ex.Message)
+        End Try
+    End Sub
+
+End Module
