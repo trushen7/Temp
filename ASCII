@@ -1,0 +1,90 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Linq.Expressions;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace ConsoleApp2
+{
+    internal class Program
+    {
+
+        static void Main(string[] args)
+        {
+            string filePath = @"C:\Test1\UTF.txt";
+            ConvertUtf8ToAnsi(filePath);
+        }
+
+        private static void ConvertUtf8ToAnsi(string filePath)
+        {
+            if (!File.Exists(filePath))
+            {
+                Console.WriteLine("File not found.");
+                return;
+            }
+
+            Encoding detectedEncoding = DetectEncoding(filePath);
+            Console.WriteLine("Detected Encoding: " + detectedEncoding);
+
+            if (detectedEncoding.EncodingName.Equals(Encoding.UTF8.EncodingName))
+            {
+                // Read using UTF-8 and write using ANSI (Encoding.Default)
+                string content = File.ReadAllText(filePath, Encoding.UTF8);
+                File.WriteAllText(filePath, content, Encoding.Default);
+                Console.WriteLine("File converted to ANSI.");
+            }
+            else
+            {
+                Console.WriteLine("File is not UTF-8. No conversion performed.");
+            }
+        }
+
+        public static Encoding DetectEncoding(string filePath)
+        {
+            byte[] bom = ReadBom(filePath);
+
+            if (IsUtf8Bom(bom))
+                return new UTF8Encoding(encoderShouldEmitUTF8Identifier: true); // UTF-8 with BOM
+
+            if (IsUtf8WithoutBom(filePath))
+                return new UTF8Encoding(encoderShouldEmitUTF8Identifier: false); // UTF-8 without BOM
+
+            return Encoding.Default; // ANSI (usually Windows-1252 on Western Windows)
+        }
+
+        private static byte[] ReadBom(string filePath)
+        {
+            using (FileStream fs = new FileStream(filePath, FileMode.Open, FileAccess.Read))
+            {
+                byte[] bom = new byte[3];
+                fs.Read(bom, 0, 3);
+                return bom;
+            }
+        }
+
+        private static bool IsUtf8Bom(byte[] bom)
+        {
+            return bom.Length >= 3 &&
+                   bom[0] == 0xEF &&
+                   bom[1] == 0xBB &&
+                   bom[2] == 0xBF;
+        }
+
+        private static bool IsUtf8WithoutBom(string filePath)
+        {
+            byte[] bytes = File.ReadAllBytes(filePath);
+            try
+            {
+                string decoded = Encoding.UTF8.GetString(bytes);
+                byte[] reEncoded = Encoding.UTF8.GetBytes(decoded);
+                return reEncoded.SequenceEqual(bytes);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+    }
+}
